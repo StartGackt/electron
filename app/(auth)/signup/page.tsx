@@ -23,6 +23,11 @@ export default function RegisterPage() {
   const router = useRouter();
 
   const handleRegister = async () => {
+    if (!username || !password || !citizenId || !phone || !fullName || !address || !position) {
+      toast.error('กรุณากรอกข้อมูลให้ครบทุกฟิลด์');
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await axios.post('/api/auth/register', {
