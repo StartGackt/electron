@@ -1,40 +1,59 @@
-import bcrypt from 'bcrypt';
-import prisma from '@/lib/prismadb';
-import { NextResponse } from 'next/server';
+import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcrypt";
+import { PrismaClient } from "@prisma/client";
+import { AuthOptions } from "next-auth";
+import { JWT } from "next-auth/jwt";
+import { Session } from "next-auth";
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { username, password, citizenId, phone, fullName, address, position } = body;
+const prisma = new PrismaClient();
 
-    if (!username || !password || !citizenId || !phone || !fullName || !address || !position) {
-      return new Response("Missing required fields", { status: 400 });
-    }
-
-    const userAlreadyExists = await prisma.user.findFirst({
-      where: { username: username },
-    });
-
-    if (userAlreadyExists) {
-      return new Response("User already exists", { status: 400 });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 12);
-    const newUser = await prisma.user.create({
-      data: {
-        username,
-        hashedPassword,
-        citizenId,
-        phone,
-        fullName,
-        address,
-        position,
+export const authOptions: AuthOptions = {
+  providers: [
+    CredentialsProvider({
+      name: 'Credentials',
+      credentials: {
+        username: { label: "Username", type: "text" },
+        password: { label: "Password", type: "password" }
       },
-    });
+      async authorize(credentials) {
+        if (!credentials?.username || !credentials?.password) {
+          throw new Error("Invalid credentials");
+        }
+        const user = await prisma.user.findFirst({
+          where: { username: credentials.username }
+        });
+        if (!user || !user.hashedPassword) {
+          throw new Error("User not found");
+        }
+        const isValidPassword = await bcrypt.compare(credentials.password, user.hashedPassword);
+        if (!isValidPassword) {
+          throw new Error("Incorrect password");
+        }
+        return { id: user.id, username: user.username };
+      }
+    })
+  ],
+  secret: process.env.NEXTAUTH_SECRET,
+  session: {
+    strategy: "jwt",
+  },
+  callbacks: {
+    async jwt({ token, user }: { token: JWT, user?: any }) {
+      if (user) {
+        token.id = user.id;
+        token.username = user.username;
+      }
+      return token;
+    },
+    async session({ session, token }: { session: Session, token: JWT }) {
+      if (token) {
+        session.user.id = token.id;
+        session.user.username = token.username;
+      }
+      return session;
+    },
+  },
+  debug: process.env.NODE_ENV !== "production",
+};
 
-    return NextResponse.json(newUser);
-  } catch (error) {
-    console.log("Register Error", error);
-    return new Response("Internal Server Error", { status: 500 });
-  }
-}
+export default authOptions;
