@@ -29,10 +29,10 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
 
-  const handleRegister = async (data) => {
+  const handleRegister = async (data : any) => {
     setLoading(true);
     try {
-      const response = await axios.post('/api/member/register', data);
+      const response = await axios.post('/api/member', data);
       if (response.status === 201) {
         toast.success('สมัครสมาชิกสำเร็จ');
         router.push('/');
