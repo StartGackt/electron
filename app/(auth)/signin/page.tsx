@@ -8,6 +8,8 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import toast from "react-hot-toast";
+import { z } from 'zod';
+import { loginSchema } from '@/schemas/authSchema';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -16,8 +18,11 @@ export default function LoginPage() {
   const router = useRouter();
 
   const login = async () => {
-    setLoading(true);
     try {
+      const data = { username, password };
+      loginSchema.parse(data);  
+
+      setLoading(true);
       const result = await signIn('credentials', {
         redirect: false,
         username,
@@ -31,8 +36,14 @@ export default function LoginPage() {
         router.push('/');
       }
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        error.errors.forEach((err) => {
+          toast.error(err.message);
+        });
+      } else {
+        toast.error('Something went wrong');
+      }
       setLoading(false);
-      toast.error('Something went wrong');
     }
   }
 

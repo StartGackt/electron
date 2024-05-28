@@ -9,27 +9,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from 'next/link';
 import { z } from 'zod';
-import { registerSchema } from '@/schemas/authSchema';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
-type RegisterFormValues = z.infer<typeof registerSchema>;
+const registerSchema = z.object({
+  memberId: z.string().min(1, "Required"),
+  familyCode: z.string().min(1, "Required"),
+  citizenId: z.string().min(1, "Required"),
+  phone: z.string().min(1, "Required"),
+  fullName: z.string().min(1, "Required"),
+  address: z.string().min(1, "Required"),
+});
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormValues>({
+  const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(registerSchema)
   });
 
   const [loading, setLoading] = useState(false);
 
-  const handleRegister = async (data: RegisterFormValues) => {
+  const handleRegister = async (data) => {
     setLoading(true);
     try {
-      const response = await axios.post('/api/auth/register', data);
+      const response = await axios.post('/api/member/register', data);
       if (response.status === 201) {
         toast.success('สมัครสมาชิกสำเร็จ');
-        router.push('/signin');
+        router.push('/');
       } else {
         toast.error('มีบางอย่างผิดพลาด');
       }
@@ -54,29 +60,24 @@ export default function RegisterPage() {
         <CardContent className="flex flex-col gap-y-10">
           <form onSubmit={handleSubmit(handleRegister)}>
             {[
-              { name: 'username', type: 'text', placeholder: 'ชื่อผู้ใช้งาน' },
-              { name: 'password', type: 'password', placeholder: 'รหัสผ่าน' },
-              { name: 'citizenId', type: 'text', placeholder: 'เลขบัตรประชาชน' },
+              { name: 'memberId', type: 'text', placeholder: 'เลขที่สมาชิก' },
+              { name: 'familyCode', type: 'text', placeholder: 'รหัสครอบครัว' },
+              { name: 'citizenId', type: 'text', placeholder: 'เลขประจำตัวประชาชน' },
               { name: 'phone', type: 'text', placeholder: 'เบอร์โทรศัพท์' },
               { name: 'fullName', type: 'text', placeholder: 'ชื่อ - นามสกุล' },
-              { name: 'address', type: 'text', placeholder: 'ที่อยู่' },
-              { name: 'position', type: 'text', placeholder: 'ตำแหน่ง' }
+              { name: 'address', type: 'text', placeholder: 'ที่อยู่' }
             ].map(({ name, type, placeholder }) => (
               <div key={name} className="flex flex-col gap-y-2">
                 <div className="flex items-center gap-x-4">
                   <Label className="whitespace-nowrap w-48 capitalize">{placeholder}</Label>
                   <Input
-                    className={`flex-grow ${errors[name as keyof RegisterFormValues] ? 'border-red-500' : ''}`}
+                    className={`flex-grow ${errors[name] ? 'border-red-500' : ''}`}
                     type={type}
                     placeholder={placeholder}
-                    {...register(name as keyof RegisterFormValues)}
+                    {...register(name)}
                   />
                 </div>
-                {errors[name as keyof RegisterFormValues] && (
-                  <span className="text-red-500 text-sm">
-                    {errors[name as keyof RegisterFormValues]?.message}
-                  </span>
-                )}
+                {errors[name] && <span className="text-red-500 text-sm">{errors[name]?.message}</span>}
               </div>
             ))}
             <div className="flex justify-center gap-x-4 mt-4">
